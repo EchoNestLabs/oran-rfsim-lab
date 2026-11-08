@@ -79,7 +79,10 @@ No build is required; the stack starts automatically on first boot.
 
 AMI name: `echonest-labs-oran-rfsim-lab-1.2.3-ubuntu22.04-x86_64`
 
-AMI IDs per region will be listed here when the image is published.
+| Region | AMI ID |
+|---|---|
+| `eu-north-1` | `ami-04b16c12f9e1973b3` |
+| `us-east-1` | `ami-0ddcd9e2ebe5ef7ef` |
 
 > **Two copies of the deployment tree exist on the image**: the
 > appliance copy at `/home/ubuntu/rfsim-compose` (used for the boot

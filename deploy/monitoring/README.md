@@ -7,7 +7,7 @@ doing what it does; a second host does the watching.
 +----------------------+          +---------------------------+
 | monitor VM           |  scrape  | lab VM (AMI)              |
 | prometheus, grafana  | <------> | node-exporter, cadvisor   |
-|                      |  pull    | + the 18 lab containers   |
+|                      |  pull    | + the 17 lab containers   |
 +----------------------+          +---------------------------+
 ```
 

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
 #
 # kpm-exporter sample container: same build path as kpm-hello - builds the
 # xApp against the pinned FlexRIC v3.0.0 source tree inside the lab's SDK

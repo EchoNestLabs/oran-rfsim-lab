@@ -258,9 +258,10 @@ services:
       oran-core-net:
         ipv4_address: 10.71.0.15
 
-  # ---- Control-plane xApps: intentionally NOT part of this testbed. The FlexRIC
-  # SDK image (FLEXRIC_SRC_TAG) still carries the full xApp toolchain for
-  # building your own xApp (see config/flexric-src/Dockerfile).
+  # ---- xApps: the RIC profile ships the stock KPM monitor only. Sample
+  # xApps (../xapps/) build on demand via docker-compose.samples.yml against
+  # the SDK image below, which carries the full xApp toolchain
+  # (see config/flexric-src/Dockerfile).
 
 networks:
   oran-core-net:

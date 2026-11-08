@@ -1,7 +1,9 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
 #
 # kpm-hello sample container: builds the xApp against the pinned FlexRIC
-# v3.0.0 source tree that ships inside the lab's SDK image. Nothing in the
+# v3.0.0 source tree that ships inside the lab's SDK image. The sample
+# source is a simplified derivative of FlexRIC's xapp_kpm_moni example
+# (CSSL v1.0, see ../LICENSES/LicenseRef-CSSL-1.0.txt). Nothing in the
 # SDK image itself is modified - the sample adds one new example directory
 # at build time (examples/xApp/c/hello) the same way upstream examples are
 # registered.

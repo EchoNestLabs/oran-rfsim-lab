@@ -1,11 +1,16 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ * Copyright (C) 2026 EchoNest Labs
  *
  * kpm-exporter: the kpm-hello sample with the print loop replaced by a
  * Prometheus text endpoint. Same KPM subscription (cell-level Format 1 +
  * per-UE Format 4, 1 s period, SST=1 filter); the indication callback
  * updates a small gauge table and a tiny HTTP server serves it on
  * :8080/metrics.
+ *
+ * Derived from FlexRIC v3.0.0 example code (via kpm-hello); licensed
+ * under the same Collaborative Standards Software License v1.0 (CSSL);
+ * see ../LICENSES/LicenseRef-CSSL-1.0.txt.
  *
  * Deliberately hello-world scope: ~8 gauges, POSIX sockets only, no
  * config, no TLS, no dashboard. Anything more ambitious wants a real

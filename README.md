@@ -79,9 +79,14 @@ No build is required; the stack starts automatically on first boot.
 
 AMI name: `echonest-labs-oran-rfsim-lab-1.2.3-ubuntu22.04-x86_64`
 
-AMI IDs per region are listed on the [project
-releases](https://github.com/EchoNestLabs/oran-rfsim-lab/releases) page
-and kept current in this README.
+AMI IDs per region will be listed here when the image is published.
+
+> **Two copies of the deployment tree exist on the image**: the
+> appliance copy at `/home/ubuntu/rfsim-compose` (used for the boot
+> above and for `up.sh`/`verify.sh`) and the repo checkout at
+> `/home/ubuntu/oran` (used to build the samples, see below). Keep
+> them straight: stack operations use the appliance copy, sample
+> builds use the repo checkout.
 
 - **Recommended instance**: t3.2xlarge (32 GB RAM; the 17-container stack
   needs it). Spot works fine.
@@ -153,5 +158,16 @@ Optional extras baked into the image but left off by default:
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE). Components that differ
-carry their own `LICENSE` file.
+Apache License 2.0 for this repository's original code, see
+[LICENSE](LICENSE). Components that differ carry their own license:
+
+- The sample xApps in [`xapps/`](xapps/) are simplified derivatives of
+  FlexRIC v3.0.0 example code and are therefore licensed under the
+  same Collaborative Standards Software License v1.0 (CSSL) — license
+  text vendored at
+  [`xapps/LICENSES/LicenseRef-CSSL-1.0.txt`](xapps/LICENSES/LicenseRef-CSSL-1.0.txt).
+- [`deploy/nms/`](deploy/nms/) wraps the AGPL-3.0 open5gs-nms web UI;
+  see that folder's README for provenance and the corresponding
+  source patches.
+- open5gs, OAI and FlexRIC themselves ship under their own licenses
+  and are pulled at pinned versions.

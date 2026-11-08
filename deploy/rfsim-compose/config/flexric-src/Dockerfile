@@ -23,7 +23,11 @@ RUN git clone --depth 1 https://github.com/mouse07410/asn1c /tmp/asn1c \
     && autoreconf -iv && ./configure --prefix=/opt/asn1c \
     && make -j"$(nproc)" && make install && rm -rf /tmp/asn1c
 
-RUN git clone --depth 1 --branch v3.0.0 https://github.com/duranta-project/flexric /src/flexric
+# Pinned: tag v3.0.0 (SHA verified; do not loosen to a moving ref).
+RUN git clone https://github.com/duranta-project/flexric /src/flexric \
+    && cd /src/flexric \
+    && git fetch --depth 1 origin 18c3325091ad6890a706ebb2bba38d3c0fb741e5 \
+    && git checkout --detach FETCH_HEAD
 
 # Build the RIC + xApp examples and install, so /usr/local/lib/flexric .so match
 # the binaries exactly (mixing with the base image's .so segfaults: ABI drift

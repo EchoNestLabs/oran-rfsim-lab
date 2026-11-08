@@ -80,8 +80,10 @@ rebuilt.
 
 ## Next samples
 
-- `xapps/kpm-exporter` — the same loop plus a `/metrics` endpoint for
-  Prometheus (the `deploy/monitoring/` tier can scrape it).
-- `rapps/slice-assurance` — a non-RT decision loop consuming exported KPIs.
+- [`xapps/kpm-exporter`](../kpm-exporter/) — the same loop plus a
+  `/metrics` endpoint for Prometheus (the `deploy/monitoring/` tier can
+  scrape it). Shipped and verified.
+- [`rapps/slice-assurance`](../../rapps/slice-assurance/) — a non-RT
+  decision loop consuming exported KPIs. Planned.
 
-Not yet available; see the READMEs for the sketches.
+See the READMEs for the current state.

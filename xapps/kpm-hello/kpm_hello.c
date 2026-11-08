@@ -1,15 +1,21 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ * Copyright (C) 2026 EchoNest Labs
  *
  * kpm-hello: a minimal FlexRIC xApp sample.
+ *
+ * Derived from FlexRIC v3.0.0 (github.com/duranta-project/flexric):
+ * connect structure from examples/xApp/c/helloworld, subscription
+ * generation simplified from examples/xApp/c/monitor/xapp_kpm_moni.c
+ * (no unit lookup table, no distribution-bin labels, one line per
+ * metric). FlexRIC v3.0.0 is licensed under the Collaborative
+ * Standards Software License v1.0 (CSSL); see
+ * ../LICENSES/LicenseRef-CSSL-1.0.txt. Modified files carry this
+ * notice per CSSL 5.2.
  *
  * It subscribes to the E2SM-KPM service of the gNB through the near-RT RIC
  * and prints what comes back: cell-level measurements plus one report per
  * UE. Pure observation - the xApp never sends anything towards the RAN.
- *
- * Structure: connect (like examples/xApp/c/helloworld) plus one simplified
- * KPM subscription (from examples/xApp/c/monitor/xapp_kpm_moni) - no unit
- * lookup table, no distribution-bin labels, one line per metric.
  */
 
 #include "xApp/e42_xapp_api.h"

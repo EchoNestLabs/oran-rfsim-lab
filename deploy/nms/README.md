@@ -13,14 +13,20 @@ does not serve, and the `metrics:` blocks in the lab's
 
 ## Why it has to run on the lab VM
 
-The backend hooks the **AMF container's network and PID namespaces**
-(`network_mode`/`pid: container:oran-amf`) to reach the 5GC's
-`127.0.0.x` metrics endpoints, and shares the AMF's view of
-`/etc/open5gs` (mounted read-only from the lab's config dir) and the
-`open5gs` database in the lab's mongodb. It cannot run on an external
-monitoring host. nginx and the frontend build use the host network
-(nginx listens on 80 and 8888; the frontend serves on 8083 because the
-lab's cAdvisor already owns 8081).
+The backend hooks the **host network and host PID namespaces**
+(`network_mode: host`, `pid: "host"`, privileged) to reach the 5GC's
+`127.0.0.x` metrics endpoints and the AMF's view of `/etc/open5gs`
+(mounted read-only from the lab's config dir) and the `open5gs`
+database in the lab's mongodb. It cannot run on an external
+monitoring host. nginx listens on 80 and 8888; the frontend serves on
+8083 because the lab's cAdvisor already owns 8081.
+
+> **Security note:** this is an admin console for a lab. It binds
+> `0.0.0.0`, runs privileged, and shares the host PID namespace —
+> set `FIRST_RUN_PASSWORD` before the first start, and keep the
+> ports firewalled (restrict the instance security group to operator
+> IPs only; the shipped AMI opens these ports to a single owner IP).
+> Do not expose this deployment to the public internet.
 
 ## Usage
 
@@ -49,12 +55,16 @@ there lists its dependencies).
 
 - Upstream commit pinned in `build.sh`: `54c405d634768c4cb27d3ef52d6e9c6114695aad`
   (main, 2026-11-04).
-- One source patch is applied: `patches/0001-proc-service-status-fallback.patch`
-  — a `/proc` fallback in the backend's service-status probe, needed
-  because no systemd runs in the AMF container. It changes
+- Two source patches are applied by `build.sh`: 
+  `patches/0001-proc-service-status-fallback.patch` — a `/proc` fallback
+  in the backend's service-status probe, needed because no systemd runs
+  in the AMF container (changes
   `backend/src/application/use-cases/service-monitor.ts` and
-  `backend/src/domain/entities/service-status.ts` only; those files
-  correspond to the patch and the pinned commit above.
+  `backend/src/domain/entities/service-status.ts`); and
+  `patches/0002-mongodb-uri-host.patch` — makes the backend derive the
+  mongodb host from `MONGODB_URI` instead of a hardcoded loopback
+  address. The patch files in this directory are the corresponding
+  source for those changes under AGPL-3.0.
 - Images built by `build.sh` carry `org.opencontainers.image.source`,
   `.revision` and `.licenses` labels. Anyone running the images can get
   the corresponding source by checking out the pinned commit and applying

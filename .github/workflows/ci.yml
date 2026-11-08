@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # gitleaks-action requires a paid license for organization repos; use the
+      # pinned CLI release, checksum-verified (v8.24.3 linux x64 tarball).
+      - name: Secret scan (gitleaks)
+        run: |
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  gitleaks.tar.gz" > gitleaks.sha256
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o gitleaks.tar.gz
+          sha256sum -c gitleaks.sha256
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact --verbose .
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell scripts (shellcheck)
+        run: shellcheck deploy/rfsim-compose/*.sh
+
+      # pinned CLI release, checksum-verified (v1.7.7 linux amd64 tarball)
+      - name: Workflow definitions (actionlint)
+        run: |
+          echo "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  actionlint.tar.gz" > actionlint.sha256
+          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz -o actionlint.tar.gz
+          sha256sum -c actionlint.sha256
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -color
+
+      - name: Compose file
+        run: docker compose -f deploy/rfsim-compose/docker-compose.yml config --quiet

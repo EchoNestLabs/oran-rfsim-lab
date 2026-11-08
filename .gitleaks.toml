@@ -1,0 +1,6 @@
+# ue{1,2}.conf hold the canonical open5gs/OAI sample subscriber values (not secrets).
+[extend]
+useDefault = true
+
+[allowlist]
+  paths = ['''^deploy/rfsim-compose/config/oai/ue[12]\.conf$''']

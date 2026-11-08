@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Optional sample applications for the rf-simulated lab. These are NOT part
+# of the appliance boot - bring up core/ran/ric first, then e.g.:
+#
+#   cd deploy/rfsim-compose
+#   docker compose -f docker-compose.yml -f docker-compose.samples.yml \
+#     --profile samples up --build kpm-hello
+#   docker logs -f oran-kpm-hello
+#
+# Note: run samples from this repo checkout (deploy/rfsim-compose), not from
+# a flattened copy of the directory - the build contexts reference ../../xapps/.
+#
+services:
+  kpm-hello:
+    build:
+      context: ../../xapps/kpm-hello
+      args:
+        FLEXRIC_SRC_TAG: ${FLEXRIC_SRC_TAG:-oran/flexric-src:v1}
+    image: oran-sample-kpm-hello:local
+    container_name: oran-kpm-hello
+    profiles: [samples]
+    # RIC must already be up (./up.sh ric); the xApp exits with a hint if no
+    # E2 nodes are reachable.
+    volumes:
+      - ./config/flexric/flexric.conf:/usr/local/etc/flexric/flexric.conf:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.53
+
+  kpm-exporter:
+    build:
+      context: ../../xapps/kpm-exporter
+      args:
+        FLEXRIC_SRC_TAG: ${FLEXRIC_SRC_TAG:-oran/flexric-src:v1}
+    image: oran-sample-kpm-exporter:local
+    container_name: oran-kpm-exporter
+    profiles: [samples]
+    # RIC must already be up (./up.sh ric); the xApp exits with a hint if no
+    # E2 nodes are reachable.
+    volumes:
+      - ./config/flexric/flexric.conf:/usr/local/etc/flexric/flexric.conf:ro
+    ports:
+      - "8080:8080"   # Prometheus text endpoint (/metrics)
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.54

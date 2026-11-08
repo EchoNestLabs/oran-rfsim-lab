@@ -1,0 +1,274 @@
+# EchoNest Labs O-RAN lab: pinned open5gs 5G core, OAI rfsim RAN,
+# FlexRIC near-RT RIC. Sample xApps run via docker-compose.samples.yml.
+# One container per NF, static docker-net IPs, clean-room configs
+# in config/open5gs/. Bring up: ./up.sh core (the oran/* images are built
+# locally by up.sh; do not pull them from a registry).
+name: oran-lab
+
+x-open5gs: &open5gs
+  image: ${OPEN5GS_TAG:-oran/open5gs:v2.8.0}
+  # built by up.sh (docker/open5gs.Dockerfile, pinned upstream tag); not on a registry
+  pull_policy: never
+  restart: unless-stopped
+  volumes:
+    - ./config/open5gs:/open5gs/config:ro
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: oran-mongodb
+    restart: unless-stopped
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.10
+    volumes:
+      - oran-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nrf:
+    <<: *open5gs
+    container_name: oran-nrf
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.11
+    command: ["open5gs-nrfd", "-c", "/open5gs/config/nrf.yaml"]
+
+  scp:
+    <<: *open5gs
+    container_name: oran-scp
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.12
+    command: ["open5gs-scpd", "-c", "/open5gs/config/scp.yaml"]
+
+  nssf:
+    <<: *open5gs
+    container_name: oran-nssf
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.26
+    command: ["open5gs-nssfd", "-c", "/open5gs/config/nssf.yaml"]
+
+  bsf:
+    <<: *open5gs
+    container_name: oran-bsf
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.27
+    command: ["open5gs-bsfd", "-c", "/open5gs/config/bsf.yaml"]
+
+  ausf:
+    <<: *open5gs
+    container_name: oran-ausf
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.22
+    command: ["open5gs-ausfd", "-c", "/open5gs/config/ausf.yaml"]
+
+  udm:
+    <<: *open5gs
+    container_name: oran-udm
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.23
+    command: ["open5gs-udmd", "-c", "/open5gs/config/udm.yaml"]
+
+  udr:
+    <<: *open5gs
+    container_name: oran-udr
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.24
+    command: ["open5gs-udrd", "-c", "/open5gs/config/udr.yaml"]
+
+  pcf:
+    <<: *open5gs
+    container_name: oran-pcf
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.25
+    command: ["open5gs-pcfd", "-c", "/open5gs/config/pcf.yaml"]
+
+  amf:
+    <<: *open5gs
+    container_name: oran-amf
+    cap_add: [NET_ADMIN]
+    ports:
+      - "38412:38412/sctp"   # NGAP for the rfsim gNB
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.20
+    command: ["open5gs-amfd", "-c", "/open5gs/config/amf.yaml"]
+
+  smf:
+    <<: *open5gs
+    container_name: oran-smf
+    cap_add: [NET_ADMIN]
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.21
+    command: ["open5gs-smfd", "-c", "/open5gs/config/smf.yaml"]
+
+  upf:
+    <<: *open5gs
+    container_name: oran-upf
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun:/dev/net/tun]
+    sysctls:
+      - net.ipv4.ip_forward=1
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.30
+    command: ["open5gs-upfd", "-c", "/open5gs/config/upf.yaml"]
+
+  # ---- RAN layer (profile: ran) -- OAI rfsim, official pinned images ----
+  gnb:
+    image: ${OAI_GNB_TAG:-oaisoftwarealliance/oai-gnb:v3.0.0}
+    container_name: oran-gnb
+    restart: unless-stopped
+    profiles: [ran]
+    depends_on: [amf, upf]
+    cap_add: [NET_ADMIN]
+    privileged: true
+    cpuset: "0,1"
+    environment:
+      CONFIGFILE: /opt/oai-gnb/etc/gnb.conf
+      USE_ADDITIONAL_OPTIONS: --rfsim --rfsimulator.[0].serveraddr server --log_config.global_log_options level,nocolor,time
+    volumes:
+      - ./config/oai/gnb.conf:/opt/oai-gnb/etc/gnb.conf:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.40
+
+  ue1:
+    image: ${OAI_UE_TAG:-oaisoftwarealliance/oai-nr-ue:v3.0.0}
+    container_name: oran-ue1
+    restart: unless-stopped
+    profiles: [ran]
+    depends_on: [gnb]
+    cap_add: [NET_ADMIN]
+    privileged: true
+    cpuset: "2,3"
+    devices: [/dev/net/tun:/dev/net/tun]
+    environment:
+      USE_ADDITIONAL_OPTIONS: --rfsim -r 106 --numerology 1 -C 3619200000 --rfsimulator.[0].serveraddr oran-gnb
+    volumes:
+      - ./config/oai/ue1.conf:/opt/oai-nr-ue/etc/nr-ue.conf:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.41
+
+  ue2:
+    image: ${OAI_UE_TAG:-oaisoftwarealliance/oai-nr-ue:v3.0.0}
+    container_name: oran-ue2
+    restart: unless-stopped
+    profiles: [ran]
+    depends_on: [gnb]
+    cap_add: [NET_ADMIN]
+    privileged: true
+    cpuset: "2,3"
+    devices: [/dev/net/tun:/dev/net/tun]
+    environment:
+      USE_ADDITIONAL_OPTIONS: --rfsim -r 106 --numerology 1 -C 3619200000 --rfsimulator.[0].serveraddr oran-gnb
+    volumes:
+      - ./config/oai/ue2.conf:/opt/oai-nr-ue/etc/nr-ue.conf:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.42
+
+  # ---- near-RT RIC layer (profile: ric) -- built from pinned FlexRIC v3.0.0
+  # source (config/flexric-src, image FLEXRIC_SRC_TAG). The released oai-flexric image
+  # speaks a different E42 wire format than the v3.0.0 tag - mixing them hangs
+  # E42 setup (verified). Everything on the RIC plane MUST come from one
+  # source tree: this image has nearRT-RIC, the sample xapps, SM libs and the
+  # the xApp examples, all built from the same commit.
+  near-rt-ric:
+    image: ${FLEXRIC_SRC_TAG:-oran/flexric-src:v1}
+    # built by up.sh (config/flexric-src, pinned flexric v3.0.0 source); not on a registry
+    pull_policy: never
+    container_name: oran-near-rt-ric
+    restart: unless-stopped
+    profiles: [ric]
+    entrypoint: ["stdbuf", "-o0", "/src/flexric/build/examples/ric/nearRT-RIC"]
+    volumes:
+      - ./config/flexric/flexric.conf:/usr/local/etc/flexric/flexric.conf:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.50
+
+  xapp-kpm-moni:
+    image: ${FLEXRIC_SRC_TAG:-oran/flexric-src:v1}
+    # built by up.sh (config/flexric-src, pinned flexric v3.0.0 source); not on a registry
+    pull_policy: never
+    container_name: oran-xapp-kpm-moni
+    restart: unless-stopped
+    profiles: [ric]
+    # gNB is started by up.sh sequencing (it lives in the 'ran' profile and
+    # referencing it here would make it 'undefined' when only 'ric' is active)
+    depends_on: [near-rt-ric]
+    entrypoint: ["stdbuf", "-o0", "/src/flexric/build/examples/xApp/c/monitor/xapp_kpm_moni"]
+    command: ["-d", "/tmp/"]
+    volumes:
+      - ./config/flexric/flexric.conf:/usr/local/etc/flexric/flexric.conf:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.51
+
+  # one-shot: seed test subscribers (profile ran-init, run before ran)
+  dbinit:
+    image: mongo:6.0
+    container_name: oran-dbinit
+    profiles: [ran-init]
+    depends_on: [mongodb]
+    entrypoint: ["bash", "-c"]
+    command: ["D=--db_uri=mongodb://10.71.0.10/open5gs; S=/mnt/dbctl.sh; $$S $$D showall | grep -q 001010000000001 || $$S $$D add 001010000000001 8baf473f2f8fd09487cccbd7097c6862 e8ed289dde69f0598dab5a9e0b7c8b3b; $$S $$D showall | grep -q 001010000000002 || $$S $$D add 001010000000002 8baf473f2f8fd09487cccbd7097c6862 e8ed289dde69f0598dab5a9e0b7c8b3b; echo SUBSCRIBERS-SEEDED"]
+    volumes:
+      - ./bin/dbctl.sh:/mnt/dbctl.sh:ro
+    networks:
+      oran-core-net:
+        ipv4_address: 10.71.0.15
+
+  # ---- Control-plane xApps: intentionally NOT part of this testbed. The FlexRIC
+  # SDK image (FLEXRIC_SRC_TAG) still carries the full xApp toolchain for
+  # building your own xApp (see config/flexric-src/Dockerfile).
+
+networks:
+  oran-core-net:
+    name: oran-core-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.71.0.0/24
+
+volumes:
+  oran-mongo-data:

@@ -1,0 +1,105 @@
+diff --git a/backend/src/application/use-cases/service-monitor.ts b/backend/src/application/use-cases/service-monitor.ts
+index eb43d7b..963f290 100644
+--- a/backend/src/application/use-cases/service-monitor.ts
++++ b/backend/src/application/use-cases/service-monitor.ts
+@@ -1,5 +1,6 @@
+ import pino from 'pino';
+ import * as net from 'net';
++import * as fs from 'fs';
+ import { IHostExecutor } from '../../domain/interfaces/host-executor';
+ import { IWebSocketBroadcaster } from '../../domain/interfaces/websocket-broadcaster';
+ import { IAuditLogger } from '../../domain/interfaces/audit-logger';
+@@ -268,9 +269,26 @@ export class ServiceMonitorUseCase {
+       };
+ 
+       this.statusCache[name] = status;
++      if (isActive) {
++        return status;
++      }
++      // systemd does not manage this unit (containerized core: the daemons
++      // run as plain processes in the 5GC container this backend shares a
++      // PID namespace with) — probe /proc before reporting down.
++      const procStatusDuringShow = await this.getProcFsStatus(name, unitName);
++      if (procStatusDuringShow) {
++        this.statusCache[name] = procStatusDuringShow;
++        return procStatusDuringShow;
++      }
+       return status;
+     } catch (err) {
+       this.logger.debug({ err, name }, 'Failed to get service status');
++      // systemd itself failed — try the PID-namespace probe before giving up.
++      const procStatus = await this.getProcFsStatus(name, unitName);
++      if (procStatus) {
++        this.statusCache[name] = procStatus;
++        return procStatus;
++      }
+       const fallback: ServiceStatus = {
+         name,
+         unitName,
+@@ -291,6 +309,53 @@ export class ServiceMonitorUseCase {
+     }
+   }
+ 
++  /**
++   * Process-level status probe for containerized cores. The backend shares
++   * the 5GC container's PID namespace (compose `pid: "container:open5gs_5gc"`),
++   * so NF daemons (open5gs-amfd, open5gs-smfd, mongod, ...) are visible as
++   * plain /proc entries even though systemd knows nothing about them.
++   * Returns a status derived from /proc/<pid>/comm, or null if /proc itself
++   * is unreadable (caller keeps its previous fallback).
++   * Added for containerized 5GC deployments (single-container cores, shared PID ns).
++   */
++  private async getProcFsStatus(name: ServiceName, unitName: string): Promise<ServiceStatus | null> {
++    try {
++      const entries = fs.readdirSync('/proc').filter((e) => /^\d+$/.test(e));
++      let foundPid: number | null = null;
++      for (const entry of entries) {
++        let comm = '';
++        try {
++          comm = fs.readFileSync(`/proc/${entry}/comm`, 'utf8').trim();
++        } catch {
++          continue; // process raced away mid-scan
++        }
++        if (comm === unitName) {
++          foundPid = parseInt(entry, 10);
++          break;
++        }
++      }
++      const active = foundPid !== null;
++      return {
++        name,
++        unitName,
++        active,
++        enabled: active,
++        state: active ? 'active' : 'inactive',
++        subState: active ? 'running' : 'dead',
++        pid: foundPid,
++        uptime: null,
++        restartCount: 0,
++        cpuPercent: null,
++        memoryBytes: null,
++        memoryPercent: null,
++        lastChecked: new Date().toISOString(),
++        source: 'process',
++      };
++    } catch {
++      return null;
++    }
++  }
++
+   private parseSystemctlShow(output: string): Record<string, string> {
+     const result: Record<string, string> = {};
+     for (const line of output.split('\n')) {
+diff --git a/backend/src/domain/entities/service-status.ts b/backend/src/domain/entities/service-status.ts
+index 037cc6c..f3789bf 100644
+--- a/backend/src/domain/entities/service-status.ts
++++ b/backend/src/domain/entities/service-status.ts
+@@ -129,7 +129,7 @@ export interface ServiceStatus {
+   memoryPercent: number | null;
+   lastChecked: string;
+   // 'systemd' = found via systemctl, 'docker' = found via docker, 'direct' = TCP ping
+-  source?: 'systemd' | 'docker' | 'direct';
++  source?: 'systemd' | 'docker' | 'direct' | 'process';
+ }
+ 
+ export interface ServiceStatusMap {

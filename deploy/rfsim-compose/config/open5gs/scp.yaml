@@ -1,0 +1,12 @@
+logger:
+  level: info
+  file: "-"
+
+scp:
+  sbi:
+    server:
+      - address: 10.71.0.12
+        port: 7777
+    client:
+      nrf:
+        - uri: http://10.71.0.11:7777

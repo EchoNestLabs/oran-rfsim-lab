@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Lab VM host metrics (node-exporter on the lab machine)
+  - job_name: lab-host
+    static_configs:
+      - targets: ["@@LAB_HOST@@:9100"]
+
+  # Per-container state and resource usage (cAdvisor on the lab machine)
+  - job_name: lab-containers
+    static_configs:
+      - targets: ["@@LAB_HOST@@:8081"]

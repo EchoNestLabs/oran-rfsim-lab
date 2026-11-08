@@ -1,0 +1,23 @@
+diff --git a/backend/src/application/use-cases/service-monitor.ts b/backend/src/application/use-cases/service-monitor.ts
+index eb43d7b..4bdd73c 100644
+--- a/backend/src/application/use-cases/service-monitor.ts
++++ b/backend/src/application/use-cases/service-monitor.ts
+@@ -175,7 +175,17 @@ export class ServiceMonitorUseCase {
+     const containerStatus = parts[1] || '';
+     const isRunning       = containerStatus.toLowerCase().startsWith('up');
+ 
+-    const tcpOk = await this.checkMongoTcp();
++    // Probe the MongoDB host from MONGODB_URI (default 127.0.0.1). Split-container
++    // 5GC deployments run mongod off the backend's loopback.
++    // Added for containerized 5GC deployments (multi-container cores).
++    const mongoTcpHost = (() => {
++      try {
++        return new URL(process.env.MONGODB_URI || '').hostname || '127.0.0.1';
++      } catch {
++        return '127.0.0.1';
++      }
++    })();
++    const tcpOk = await this.checkMongoTcp(mongoTcpHost);
+ 
+     if (shouldLog) {
+       this.logger.info({ containerName, containerStatus, isRunning, tcpOk }, 'MongoDB Docker status resolved');

@@ -3,57 +3,61 @@
 [![CI](https://github.com/EchoNestLabs/oran-rfsim-lab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EchoNestLabs/oran-rfsim-lab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-A reproducible Open RAN lab — OAI gNB in rfsim mode with OAI nr-UEs, the
-FlexRIC near-RT RIC and the open5gs 5G core, on a single Docker host —
-plus example xApps and rApps demonstrating closed-loop RAN intelligence
-on top of it. Maintained by [**EchoNest Labs**](https://echonest.se).
+A reproducible Open RAN lab that runs on a single Docker host: an OAI gNB
+in rfsim mode with two OAI nr-UEs, the FlexRIC near-RT RIC and the open5gs
+5G core. Example xApps and rApps build on that foundation, working toward a
+closed control loop over the RAN. Maintained by
+[**EchoNest Labs**](https://echonest.se).
 
 The sample loop has three stages:
 
-- **Telemetry**: an xApp collects RAN key performance measurements from
-  the gNB over E2 — [`kpm-hello`](xapps/kpm-hello/) is the shipped sample;
-  the lab also runs FlexRIC's stock KPM monitor.
-- **Decision**: an rApp consumes KPIs and produces a control decision
-  (planned).
-- **Control**: an xApp applies the decision over E2 towards the gNB
-  (planned; the FlexRIC SDK image ships the full xApp toolchain).
+1. Telemetry: an xApp collects RAN performance measurements from the gNB
+   over E2. [`kpm-hello`](xapps/kpm-hello/) is the shipped sample; the lab
+   also runs FlexRIC's stock KPM monitor.
+2. Decision: an rApp consumes the KPIs and produces a control decision
+   (planned).
+3. Control: an xApp applies that decision over E2 towards the gNB
+   (planned). The FlexRIC SDK image ships the full xApp toolchain for it.
 
-## Contents
+## What is in the repository
 
 | Directory | Status | Description |
 |---|---|---|
-| [`deploy/`](deploy/rfsim-compose/) | **working** | Deployment variants; [`rfsim-compose/`](deploy/rfsim-compose/) currently holds the single-host rf-simulated lab: docker compose profiles for the 5GC, RAN and RIC planes, bring-up and verify scripts. Optional add-ons: [`deploy/monitoring/`](deploy/monitoring/) (external monitoring tier) and [`deploy/nms/`](deploy/nms/) (open5gs-nms topology web UI) |
-| [`rapps/`](rapps/) | planned | rApps (non-RT control loop: KPIs to decision to actuation) |
-| [`xapps/`](xapps/) | partial | xApps: [`kpm-hello`](xapps/kpm-hello/) is a shipped hello-world telemetry sample; the built-in KPM monitor running in the lab is FlexRIC's example binary; other samples are planned (see the folder READMEs) |
+| [`deploy/rfsim-compose/`](deploy/rfsim-compose/) | **working** | The lab itself. This directory holds the single-host rf-simulated lab with docker compose profiles for the 5GC, RAN and RIC planes, plus bring-up and verify scripts. Optional add-ons: [`deploy/monitoring/`](deploy/monitoring/) and [`deploy/nms/`](deploy/nms/) (open5gs-nms topology web UI) |
+| [`rapps/`](rapps/) | planned | rApps: the non-real-time control loop, from KPIs to decision to actuation |
+| [`xapps/`](xapps/) | partial | xApps. [`kpm-hello`](xapps/kpm-hello/) ships as a hello-world telemetry sample; the KPM monitor running in the lab is FlexRIC's own example binary. More samples are planned, see the folder READMEs |
 | [`dashboards/`](dashboards/) | planned | Grafana dashboards for the samples |
-| [`replay/`](replay/) | planned | Recorded KPI traces for RAN-free execution |
-| [`docs/`](docs/) | partial | Documentation index and pointers (AMI usage, lab bring-up) |
+| [`replay/`](replay/) | planned | Recorded KPI traces, so the control loop can run without a RAN |
+| [`docs/`](docs/) | partial | Documentation index: AMI usage, lab bring-up |
 
 ## Quick start
 
-The fastest way to run the lab is the prebuilt machine image (below).
-To build everything from source instead, see
-[`deploy/rfsim-compose/README.md`](deploy/rfsim-compose/README.md).
-In short, on a Docker host with TUN enabled:
+The quickest way to run the lab is the prebuilt machine image (see Machine
+image below). If you would rather build everything from source, see
+[`deploy/rfsim-compose/README.md`](deploy/rfsim-compose/README.md). On a
+Docker host with TUN enabled:
 
 ```bash
 cd deploy/rfsim-compose
 ./up.sh core   # open5gs 5G core (builds the pinned core image, one time)
-./up.sh ran    # OAI gNB + 2 UEs in rfsim mode (builds the FlexRIC source image, one time)
+./up.sh ran    # OAI gNB + 2 UEs in rfsim mode (also builds the FlexRIC source image on first run)
 ./up.sh ric    # FlexRIC near-RT RIC + KPM monitor xApp
 ./verify.sh core && ./verify.sh ran && ./verify.sh ric
 ```
 
 Each `verify.sh <slice>` prints one PASS/FAIL line per gate and exits
-non-zero on any failure. All slices are idempotent and safe to re-run.
+non-zero if anything fails. All slices are idempotent, so re-running them
+is safe.
 
 ## Sample applications
 
-Sample apps live in [`xapps/`](xapps/) and [`rapps/`](rapps/) and are
-**never** part of the appliance boot — they are built on demand against
-the pinned FlexRIC source that ships in the SDK image. Start with
-[`xapps/kpm-hello`](xapps/kpm-hello/): a ~300-line xApp that subscribes to
-E2SM-KPM and prints per-second cell-level and per-UE measurements.
+Samples live in [`xapps/`](xapps/) and [`rapps/`](rapps/). They are never
+part of the appliance boot; they build on demand against the pinned FlexRIC
+source that ships in the SDK image.
+
+Start with [`xapps/kpm-hello`](xapps/kpm-hello/), a ~300-line xApp that
+subscribes to E2SM-KPM and prints cell-level and per-UE measurements every
+second:
 
 ```bash
 cd deploy/rfsim-compose   # with the lab up (core, ran, ric)
@@ -62,9 +66,9 @@ docker compose -f docker-compose.yml -f docker-compose.samples.yml \
 docker logs -f oran-kpm-hello
 ```
 
-Next, [`xapps/kpm-exporter`](xapps/kpm-exporter/): the same subscription
-as a Prometheus text endpoint, so the RAN KPIs become scrapeable metrics
-instead of scrolling logs.
+Then try [`xapps/kpm-exporter`](xapps/kpm-exporter/). It runs the same
+subscription behind a Prometheus text endpoint, so the RAN KPIs become
+scrapeable metrics instead of scrolling logs:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.samples.yml \
@@ -72,10 +76,10 @@ docker compose -f docker-compose.yml -f docker-compose.samples.yml \
 curl -s localhost:8080/metrics
 ```
 
-## Machine image (AMI)
+## Machine image
 
-The full lab is published as a public AWS EC2 machine image.
-No build is required; the stack starts automatically on first boot.
+The whole lab is published as a public EC2 machine image. Nothing needs
+building; the stack starts by itself on first boot.
 
 AMI name: `echonest-labs-oran-rfsim-lab-1.2.3-ubuntu22.04-x86_64`
 
@@ -84,43 +88,38 @@ AMI name: `echonest-labs-oran-rfsim-lab-1.2.3-ubuntu22.04-x86_64`
 | `eu-north-1` | `ami-04b16c12f9e1973b3` |
 | `us-east-1` | `ami-0ddcd9e2ebe5ef7ef` |
 
-> **Two copies of the deployment tree exist on the image**: the
-> appliance copy at `/home/ubuntu/rfsim-compose` (used for the boot
-> above and for `up.sh`/`verify.sh`) and the repo checkout at
-> `/home/ubuntu/oran` (used to build the samples, see below). Keep
-> them straight: stack operations use the appliance copy, sample
-> builds use the repo checkout.
+A few things worth knowing before you launch:
 
-- **Recommended instance**: t3.2xlarge (32 GB RAM; the 17-container stack
-  needs it). Spot works fine.
-- **Storage**: 40 GB gp3 root.
-- **Access**: AWS Session Manager (SSM) only. The image ships no SSH keys,
-  and SSH host keys are regenerated at first boot. SSM needs an instance
+- Use a t3.2xlarge. The 17-container stack needs the 32 GB of RAM, and the
+  image runs fine on a spot instance.
+- 40 GB of gp3 storage on the root volume is enough.
+- Access goes through AWS Session Manager (SSM). The image ships no SSH
+  keys and regenerates SSH host keys at first boot. SSM needs an instance
   profile: either enable [default host management
   configuration](https://docs.aws.amazon.com/systems-manager/latest/userguide/default-host-management.html)
-  on your account, or create a role with the `AmazonSSMManagedInstanceCore`
-  policy and select it under "IAM instance profile" when launching.
-- **Stack versions**: open5gs v2.8.0, OAI gNB + nr-UE v3.0.0 (rfsim),
-  FlexRIC v3.0.0 (built from a pinned source tag).
+  on your account, or attach a role with the `AmazonSSMManagedInstanceCore`
+  policy when you launch.
+- Software versions: open5gs v2.8.0, OAI gNB and nr-UE v3.0.0 (rfsim),
+  FlexRIC v3.0.0 built from a pinned source tag.
 
-When the instance is running, connect (no SSH keys involved):
+Connect once the instance is running:
 
 ```bash
 aws ssm start-session --target <instance-id>
 ```
 
-Sessions open as the `ssm-user` account, which has passwordless sudo;
-the docker socket is root-only, so become root before touching the lab:
+Sessions open as the `ssm-user` account, which has passwordless sudo. The
+docker socket is root-only, so become root before you touch the lab:
 
 ```bash
 sudo -i
 cd /home/ubuntu/rfsim-compose   # the appliance copy of deploy/rfsim-compose/
 ```
 
-The 17 containers on first boot are the 12 open5gs network functions,
-the OAI gNB and 2 UEs, and the FlexRIC near-RT RIC with its stock KPM
-monitor xApp. The stack is ready within a few minutes
-(`docker ps -q | wc -l` prints 17). Verify each layer:
+On first boot you get 17 containers: the 12 open5gs network functions, the
+OAI gNB and two UEs, and the near-RT RIC with its stock KPM monitor. The
+stack is ready within a few minutes, and `docker ps -q | wc -l` prints 17
+when it is. Check each layer:
 
 ```bash
 cd /home/ubuntu/rfsim-compose
@@ -129,12 +128,18 @@ cd /home/ubuntu/rfsim-compose
 ./verify.sh ric    # near-RT RIC, E2 nodes registered, KPM indications
 ```
 
-The RAN/RIC gates check live state (SCTP association, tunnel
-addresses, a sliding log window), so they stay accurate after hours of
-uptime; if a RIC gate fails right after a RAN restart, re-run
-`./up.sh ric` to resubscribe the KPM monitor.
+The RAN and RIC gates check live state: SCTP associations, tunnel
+addresses, a sliding window over recent logs. That keeps them accurate even
+after hours of uptime. If a RIC gate fails right after a RAN restart, run
+`./up.sh ric` once to resubscribe the KPM monitor.
 
-Running the sample xApp on the instance (verified on this image):
+> Two copies of the deployment tree live on the image. The appliance copy
+> at `/home/ubuntu/rfsim-compose` is what the stack and `up.sh` /
+> `verify.sh` use. The repo checkout at `/home/ubuntu/oran` is what you use
+> to build samples. Stack operations go to the appliance copy, sample
+> builds go to the repo checkout.
+
+Running the sample xApp on the instance:
 
 ```bash
 cd /home/ubuntu/oran/deploy/rfsim-compose   # repo checkout on the image
@@ -143,34 +148,34 @@ docker compose -f docker-compose.yml -f docker-compose.samples.yml \
 docker logs -f oran-kpm-hello
 ```
 
-Writing your own xApp: the image contains the full FlexRIC v3.0.0 SDK
-(`oran/flexric-src:v1`, source in `/src/flexric`) with the E2 endpoint
-and KPM reports under `/tmp` — [`xapps/kpm-hello`](xapps/kpm-hello/) is a
-complete, minimal example of building against it.
+If you want to write your own xApp, the image already contains the full
+FlexRIC v3.0.0 SDK (image `oran/flexric-src:v1`, source in `/src/flexric`)
+with the E2 endpoint reachable and KPM report dumps under `/tmp` inside the
+container.
+[`xapps/kpm-hello`](xapps/kpm-hello/) is a complete, minimal example of
+building against it.
 
-> **Provenance note:** this is an EchoNest Labs appliance, not an
-> official image of open5gs, OAI, FlexRIC or the O-RAN Alliance.
-> All included components are open source under their own licenses.
+> This is an EchoNest Labs appliance, not an official image of open5gs,
+> OAI, FlexRIC or the O-RAN Alliance. Everything in it is open source
+> under its own license.
 
-Optional extras baked into the image but left off by default:
+Two optional extras are baked into the image but off by default:
 
-- `deploy/monitoring/` — external monitoring tier (node-exporter,
-  cAdvisor on the VM; Prometheus + Grafana elsewhere).
-- `deploy/nms/` — the open5gs-nms web NMS with the live 5GC topology
-  (runs on the lab VM itself; see that folder's README, AGPL-3.0).
+- `deploy/monitoring/` runs an external monitoring tier: node-exporter and
+  cAdvisor on the VM itself, with Prometheus and Grafana elsewhere.
+- `deploy/nms/` is the open5gs-nms web UI showing the live 5GC topology.
+  It runs on the lab VM; see that folder's README (AGPL-3.0).
 
 ## License
 
-Apache License 2.0 for this repository's original code, see
-[LICENSE](LICENSE). Components that differ carry their own license:
+The original code in this repository is Apache License 2.0, see
+[LICENSE](LICENSE). Some components carry their own licenses:
 
-- The sample xApps in [`xapps/`](xapps/) are simplified derivatives of
-  FlexRIC v3.0.0 example code and are therefore licensed under the
-  same Collaborative Standards Software License v1.0 (CSSL) — license
-  text vendored at
+- The sample xApps in [`xapps/`](xapps/) are simplified derivatives of the
+  FlexRIC v3.0.0 example code, so they ship under the same Collaborative
+  Standards Software License v1.0 (CSSL). The license text is vendored at
   [`xapps/LICENSES/LicenseRef-CSSL-1.0.txt`](xapps/LICENSES/LicenseRef-CSSL-1.0.txt).
-- [`deploy/nms/`](deploy/nms/) wraps the AGPL-3.0 open5gs-nms web UI;
-  see that folder's README for provenance and the corresponding
-  source patches.
-- open5gs, OAI and FlexRIC themselves ship under their own licenses
-  and are pulled at pinned versions.
+- [`deploy/nms/`](deploy/nms/) wraps the AGPL-3.0 open5gs-nms web UI. That
+  folder's README covers provenance and the corresponding source patches.
+- open5gs, OAI and FlexRIC keep their own licenses and are pulled at
+  pinned versions.

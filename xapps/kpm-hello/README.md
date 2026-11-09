@@ -1,9 +1,9 @@
 # kpm-hello xApp
 
-The hello world of this repo: a **single-file xApp** (~300 lines of C) that
+The hello world of this repo: a single-file xApp (~300 lines of C) that
 subscribes to E2SM-KPM measurements from the gNB through the near-RT RIC and
-prints what it receives — cell-level metrics plus one report per UE, once a
-second. It is pure observation: the xApp never sends anything towards the
+prints what it receives, once a second: cell-level metrics plus one report
+per UE. It is pure observation; the xApp never sends anything towards the
 RAN.
 
 This is the E2/KPM equivalent of NVIDIA's `prb-power` sample in
@@ -14,19 +14,19 @@ to one stream of RAN data, do one small thing with it, show the output.
 
 | Building block | Where to look |
 |---|---|
-| Connecting an xApp to the near-RT RIC (E2) | `main()` — `init_xapp_api` / `e2_nodes_xapp_api` |
+| Connecting an xApp to the near-RT RIC (E2) | `main()`: `init_xapp_api` / `e2_nodes_xapp_api` |
 | Discovering the KPM RAN function and its report styles | `find_sm_idx` / the subscription loop |
 | Subscribing to periodic E2SM-KPM reports | `gen_kpm_subs` (event trigger + action definition, both formats 1 and 4) |
 | Handling indications and parsing measurements | `sm_cb_kpm` / `print_meas_report` |
 
 The per-UE subscription uses Action Definition Format 4 and filters UEs by
-S-NSSAI SST=1 — the SST of the subscribers seeded by the lab. Cell-level
+S-NSSAI SST=1, the SST of the subscribers seeded by the lab. Cell-level
 reports arrive regardless and cover the rest.
 
 ## Run it
 
 You need the lab up (at least `core`, `ran`, `ric` slices). The sample is
-**not** part of the appliance boot; it is built on demand against the pinned
+not part of the appliance boot; it is built on demand against the pinned
 FlexRIC source that ships in the lab's SDK image (`oran/flexric-src:v1`,
 source in `/src/flexric`).
 
@@ -74,16 +74,16 @@ xapps/kpm-hello/
 ```
 
 The Dockerfile copies the source into the SDK image's FlexRIC tree as a new
-upstream-style example (`examples/xApp/c/hello`) and builds it there — no
+upstream-style example (`examples/xApp/c/hello`) and builds it there. No
 existing FlexRIC sources are modified, and the SDK image itself is never
 rebuilt.
 
 ## Next samples
 
-- [`xapps/kpm-exporter`](../kpm-exporter/) — the same loop plus a
+- [`xapps/kpm-exporter`](../kpm-exporter/): the same loop plus a
   `/metrics` endpoint for Prometheus (the `deploy/monitoring/` tier can
   scrape it). Shipped and verified.
-- [`rapps/slice-assurance`](../../rapps/slice-assurance/) — a non-RT
+- [`rapps/slice-assurance`](../../rapps/slice-assurance/): a non-RT
   decision loop consuming exported KPIs. Planned.
 
 See the READMEs for the current state.

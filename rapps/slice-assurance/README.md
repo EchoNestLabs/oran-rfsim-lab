@@ -6,4 +6,4 @@ management plane. Planned to work in two modes: replay (recorded KPI
 traces, no RAN needed) and live (against the rfsim lab in
 [`deploy/`](../../deploy)).
 
-*Under preparation — no code yet.*
+*Under preparation, no code yet.*

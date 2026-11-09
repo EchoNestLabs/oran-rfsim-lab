@@ -9,7 +9,7 @@ One C file, no metrics library: a mutex-guarded gauge table written by the
 E2 indication callback, and a ~100-line POSIX-socket HTTP server serving
 `:8080/metrics`.
 
-Exposed metrics (hello-world sized: 8 gauges + 1 counter):
+Exposed metrics, hello-world sized: 7 gauges and 1 counter.
 
 | Metric | Source | Labels |
 |---|---|---|
@@ -23,9 +23,9 @@ Exposed metrics (hello-world sized: 8 gauges + 1 counter):
 | `kpm_ue_rlc_sdu_delay_dl` | `DRB.RlcSduDelayDl` | `ue_id` |
 
 UE (and cell) entries disappear from the exposition after 30 s without a
-report, so UEs the RAN stops reporting do not stick around. Note this is
-gated on the RAN: while the gNB keeps a departed UE in its per-UE reports
-(e.g. a UE that died without a clean detach keeps its context for a
+report, so UEs the RAN stops reporting do not stick around. One caveat:
+this is gated on the RAN. While the gNB keeps a departed UE in its per-UE
+reports (a UE that died without a clean detach keeps its context for a
 while), the row persists with the last known values.
 
 From `deploy/rfsim-compose/` (with the lab up: core, ran, ric):
@@ -51,4 +51,4 @@ To feed the optional monitoring tier
 ([`deploy/monitoring/`](../../deploy/monitoring/)), add a scrape job
 pointing at the exporter container (`kpm-exporter:8080`, or
 `localhost:8080` from the VM). Dashboards are deliberately not shipped
-with the sample.
+with the sample; that is the monitoring tier's job.
